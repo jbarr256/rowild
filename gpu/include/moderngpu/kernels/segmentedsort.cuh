@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /******************************************************************************
  * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  * 
@@ -465,7 +466,7 @@ MGPU_HOST MGPU_MEM(byte) AllocSegSortBuffers(int count, int nv,
 		countersSize);
 
 	// Fill the counters with 0s on the first run.
-	cudaMemsetAsync(support.queueCounters_global, 0, sizeof(int4), 
+	hipMemsetAsync(support.queueCounters_global, 0, sizeof(int4), 
 		context.Stream());
 	
 	return mem;
@@ -478,8 +479,8 @@ public:
 
 	void Pass(SegSortSupport& support, int pass) {
 		int2 counters;
-		cudaMemcpy(&counters, support.queueCounters_global, sizeof(int2), 
-			cudaMemcpyDeviceToHost);
+		hipMemcpy(&counters, support.queueCounters_global, sizeof(int2), 
+			hipMemcpyDeviceToHost);
 
 		printf("pass %2d:   %7d (%6.2lf%%)     %7d (%6.2lf%%)\n", pass,
 			counters.x, 100.0 * counters.x / numBlocks,

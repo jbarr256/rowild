@@ -2,7 +2,7 @@
 #pragma once
 
 #include "util/util.h"
-#include <cuda.h>
+#include <hip/hip_runtime.h>
 
 namespace mgpu {
 
@@ -20,7 +20,7 @@ typedef intrusive_ptr<CudaContext> ContextPtr;
 
 class CudaAlloc : public CudaBase {
 public:
-	virtual cudaError_t Malloc(size_t size, void** p) = 0;
+	virtual hipError_t Malloc(size_t size, void** p) = 0;
 	virtual bool Free(void* p) = 0;
 	virtual void Clear() = 0;
 
@@ -33,12 +33,12 @@ protected:
 	CudaDevice& _device;
 };
 
-// A concrete class allocator that simply calls cudaMalloc and cudaFree.
+// A concrete class allocator that simply calls hipMalloc and hipFree.
 class CudaAllocSimple : public CudaAlloc {
 public:
 	CudaAllocSimple(CudaDevice& device) : CudaAlloc(device) { }
 
-	virtual cudaError_t Malloc(size_t size, void** p);
+	virtual hipError_t Malloc(size_t size, void** p);
 	virtual bool Free(void* p);
 	virtual void Clear() { }
 	virtual ~CudaAllocSimple() { }
@@ -52,7 +52,7 @@ public:
 	CudaAllocBuckets(CudaDevice& device);
 	virtual ~CudaAllocBuckets();
 
-	virtual cudaError_t Malloc(size_t size, void** p);
+	virtual hipError_t Malloc(size_t size, void** p);
 	virtual bool Free(void* p);
 	virtual void Clear();
 

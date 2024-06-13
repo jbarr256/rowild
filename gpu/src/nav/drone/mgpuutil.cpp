@@ -33,7 +33,7 @@
  ******************************************************************************/
 
 #include "util/format.h"
-#include <vector_types.h>
+#include <hip/hip_vector_types.h>
 #include <cstdarg>
 #include <map>
 

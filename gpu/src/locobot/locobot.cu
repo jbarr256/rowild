@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /*
  * MIT License
  *
@@ -26,8 +27,8 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cuda_runtime.h>
-#include <curand_kernel.h>
+#include <hip/hip_runtime.h>
+#include <hiprand/hiprand_kernel.h>
 #include <iterator>
 #include <string>
 #include <vector>
@@ -173,17 +174,17 @@ __global__ void rrtKernel(float (*TLink)[4][4], float (*TJoint)[4][4],
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx >= *currentNumNodes) return;
 
-    curandState state;
-    curand_init(idx, idx, 0, &state);
+    hiprandState state;
+    hiprand_init(idx, idx, 0, &state);
 
-    float prob = curand_uniform(&state);
+    float prob = hiprand_uniform(&state);
     if (prob < goalBiasProbability) {
         for (int d = 0; d < DOF; ++d) {
             randAngles[idx * DOF + d] = goalNode.angles[d];
         }
     } else {
         for (int d = 0; d < DOF; ++d) {
-            randAngles[idx * DOF + d] = (curand_uniform(&state) - 0.5) * M_PI;
+            randAngles[idx * DOF + d] = (hiprand_uniform(&state) - 0.5) * M_PI;
         }
     }
 
@@ -314,20 +315,20 @@ std::vector<JOINT_CFG> LoCoBot::planRRT(const JOINT_CFG &start,
     int h_numNodes = 1;
     bool h_reached = false;
 
-    cudaMalloc(&d_nodes, sizeof(Node) * MAX_NODES);
-    cudaMalloc(&d_randAngles,
+    hipMalloc(&d_nodes, sizeof(Node) * MAX_NODES);
+    hipMalloc(&d_randAngles,
                sizeof(float) * DOF * NUM_BLOCKS * THREADS_PER_BLOCK);
-    cudaMalloc(&d_numNodes, sizeof(int));
-    cudaMalloc(&d_reached, sizeof(bool));
+    hipMalloc(&d_numNodes, sizeof(int));
+    hipMalloc(&d_reached, sizeof(bool));
 
-    cudaMemcpy(d_numNodes, &h_numNodes, sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_reached, &h_reached, sizeof(bool), cudaMemcpyHostToDevice);
+    hipMemcpy(d_numNodes, &h_numNodes, sizeof(int), hipMemcpyHostToDevice);
+    hipMemcpy(d_reached, &h_reached, sizeof(bool), hipMemcpyHostToDevice);
 
     Node h_node;
     h_node.parent = -1;
     for (int d = 0; d < DOF; ++d)
         h_node.angles[d] = start.at(d);
-    cudaMemcpy(d_nodes, &h_node, sizeof(Node), cudaMemcpyHostToDevice);
+    hipMemcpy(d_nodes, &h_node, sizeof(Node), hipMemcpyHostToDevice);
 
     Node goalNode;
     for (int d = 0; d < DOF; ++d)
@@ -337,28 +338,28 @@ std::vector<JOINT_CFG> LoCoBot::planRRT(const JOINT_CFG &start,
     float(*d_TBlock)[4][4], (*d_TColl)[4][4], (*d_cPoints)[9][3],
         (*d_cAxes)[3][3];
 
-    cudaMalloc((void **)&d_TLink, sizeof(this->TLink));
-    cudaMalloc((void **)&d_TJoint, sizeof(this->TJoint));
-    cudaMalloc((void **)&d_TCurr, sizeof(this->TCurr));
-    cudaMalloc((void **)&d_TBlock, sizeof(this->TBlock));
-    cudaMalloc((void **)&d_TColl, sizeof(this->TColl));
-    cudaMalloc((void **)&d_cPoints, sizeof(this->cPoints));
-    cudaMalloc((void **)&d_cAxes, sizeof(this->cAxes));
+    hipMalloc((void **)&d_TLink, sizeof(this->TLink));
+    hipMalloc((void **)&d_TJoint, sizeof(this->TJoint));
+    hipMalloc((void **)&d_TCurr, sizeof(this->TCurr));
+    hipMalloc((void **)&d_TBlock, sizeof(this->TBlock));
+    hipMalloc((void **)&d_TColl, sizeof(this->TColl));
+    hipMalloc((void **)&d_cPoints, sizeof(this->cPoints));
+    hipMalloc((void **)&d_cAxes, sizeof(this->cAxes));
 
-    cudaMemcpy(d_TLink, this->TLink, sizeof(this->TLink),
-               cudaMemcpyHostToDevice);
-    cudaMemcpy(d_TJoint, this->TJoint, sizeof(this->TJoint),
-               cudaMemcpyHostToDevice);
-    cudaMemcpy(d_TCurr, this->TCurr, sizeof(this->TCurr),
-               cudaMemcpyHostToDevice);
-    cudaMemcpy(d_TBlock, this->TBlock, sizeof(this->TBlock),
-               cudaMemcpyHostToDevice);
-    cudaMemcpy(d_TColl, this->TColl, sizeof(this->TColl),
-               cudaMemcpyHostToDevice);
-    cudaMemcpy(d_cPoints, this->cPoints, sizeof(this->cPoints),
-               cudaMemcpyHostToDevice);
-    cudaMemcpy(d_cAxes, this->cAxes, sizeof(this->cAxes),
-               cudaMemcpyHostToDevice);
+    hipMemcpy(d_TLink, this->TLink, sizeof(this->TLink),
+               hipMemcpyHostToDevice);
+    hipMemcpy(d_TJoint, this->TJoint, sizeof(this->TJoint),
+               hipMemcpyHostToDevice);
+    hipMemcpy(d_TCurr, this->TCurr, sizeof(this->TCurr),
+               hipMemcpyHostToDevice);
+    hipMemcpy(d_TBlock, this->TBlock, sizeof(this->TBlock),
+               hipMemcpyHostToDevice);
+    hipMemcpy(d_TColl, this->TColl, sizeof(this->TColl),
+               hipMemcpyHostToDevice);
+    hipMemcpy(d_cPoints, this->cPoints, sizeof(this->cPoints),
+               hipMemcpyHostToDevice);
+    hipMemcpy(d_cAxes, this->cAxes, sizeof(this->cAxes),
+               hipMemcpyHostToDevice);
 
     auto h_pointsObs = this->env->getPointsObs();
     auto h_axesObs = this->env->getAxesObs();
@@ -376,9 +377,9 @@ std::vector<JOINT_CFG> LoCoBot::planRRT(const JOINT_CFG &start,
         }
     }
     float *d_flattenedPointsObs;
-    cudaMalloc(&d_flattenedPointsObs, pObsSize * sizeof(float));
-    cudaMemcpy(d_flattenedPointsObs, h_flattenedPointsObs,
-               pObsSize * sizeof(float), cudaMemcpyHostToDevice);
+    hipMalloc(&d_flattenedPointsObs, pObsSize * sizeof(float));
+    hipMemcpy(d_flattenedPointsObs, h_flattenedPointsObs,
+               pObsSize * sizeof(float), hipMemcpyHostToDevice);
 
     int aObsSize = numObstacles * 3 * 3;
     float *h_flattenedAxesObs = new float[aObsSize];
@@ -391,9 +392,9 @@ std::vector<JOINT_CFG> LoCoBot::planRRT(const JOINT_CFG &start,
         }
     }
     float *d_flattenedAxesObs;
-    cudaMalloc(&d_flattenedAxesObs, aObsSize * sizeof(float));
-    cudaMemcpy(d_flattenedAxesObs, h_flattenedAxesObs, aObsSize * sizeof(float),
-               cudaMemcpyHostToDevice);
+    hipMalloc(&d_flattenedAxesObs, aObsSize * sizeof(float));
+    hipMemcpy(d_flattenedAxesObs, h_flattenedAxesObs, aObsSize * sizeof(float),
+               hipMemcpyHostToDevice);
 
     while (!h_reached && h_numNodes < MAX_NODES) {
         rrtKernel<<<NUM_BLOCKS, THREADS_PER_BLOCK>>>(
@@ -401,15 +402,15 @@ std::vector<JOINT_CFG> LoCoBot::planRRT(const JOINT_CFG &start,
             d_nodes, d_numNodes, d_randAngles, goalNode, threshold, d_reached,
             goalBias, d_flattenedPointsObs, d_flattenedAxesObs, numObstacles);
 
-        cudaDeviceSynchronize();
-        cudaMemcpy(&h_reached, d_reached, sizeof(bool), cudaMemcpyDeviceToHost);
-        cudaMemcpy(&h_numNodes, d_numNodes, sizeof(int),
-                   cudaMemcpyDeviceToHost);
+        hipDeviceSynchronize();
+        hipMemcpy(&h_reached, d_reached, sizeof(bool), hipMemcpyDeviceToHost);
+        hipMemcpy(&h_numNodes, d_numNodes, sizeof(int),
+                   hipMemcpyDeviceToHost);
     }
 
     Node *h_nodes = new Node[MAX_NODES];
-    cudaMemcpy(h_nodes, d_nodes, sizeof(Node) * MAX_NODES,
-               cudaMemcpyDeviceToHost);
+    hipMemcpy(h_nodes, d_nodes, sizeof(Node) * MAX_NODES,
+               hipMemcpyDeviceToHost);
 
     std::vector<JOINT_CFG> path;
     int currentIndex = h_numNodes - 1;
@@ -423,19 +424,19 @@ std::vector<JOINT_CFG> LoCoBot::planRRT(const JOINT_CFG &start,
     delete[] h_flattenedPointsObs;
     delete[] h_flattenedAxesObs;
 
-    cudaFree(d_TLink);
-    cudaFree(d_TJoint);
-    cudaFree(d_TCurr);
-    cudaFree(d_TBlock);
-    cudaFree(d_TColl);
-    cudaFree(d_cPoints);
-    cudaFree(d_cAxes);
-    cudaFree(d_nodes);
-    cudaFree(d_randAngles);
-    cudaFree(d_numNodes);
-    cudaFree(d_reached);
-    cudaFree(d_flattenedPointsObs);
-    cudaFree(d_flattenedAxesObs);
+    hipFree(d_TLink);
+    hipFree(d_TJoint);
+    hipFree(d_TCurr);
+    hipFree(d_TBlock);
+    hipFree(d_TColl);
+    hipFree(d_cPoints);
+    hipFree(d_cAxes);
+    hipFree(d_nodes);
+    hipFree(d_randAngles);
+    hipFree(d_numNodes);
+    hipFree(d_reached);
+    hipFree(d_flattenedPointsObs);
+    hipFree(d_flattenedAxesObs);
 
     return path;
 }

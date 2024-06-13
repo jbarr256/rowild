@@ -111,8 +111,8 @@ GPULeggedRobotSolver::~GPULeggedRobotSolver()
 
 void GPULeggedRobotSolver::initialize(double heuristicWeight)
 {
-    cudaDeviceSynchronize();
-    cudaDeviceReset();
+    hipDeviceSynchronize();
+    hipDeviceReset();
 
     d->context = CreateCudaDevice(0);
 
@@ -197,7 +197,7 @@ bool GPULeggedRobotSolver::solve()
                 *d->heapInsertSize
             );
 #ifdef KERNEL_LOG
-        cudaDeviceSynchronize();
+        hipDeviceSynchronize();
 #endif
 
         dprintf("\t\tRound %d: Fetch optimalNodesSize: ", round);
@@ -256,7 +256,7 @@ bool GPULeggedRobotSolver::solve()
                 *d->sortListSize2
             );
 #ifdef KERNEL_LOG
-        cudaDeviceSynchronize();
+        hipDeviceSynchronize();
 #endif
 
         dprintf("\t\tRound %d: Fetch sortListSize2: ", round);
@@ -284,7 +284,7 @@ bool GPULeggedRobotSolver::solve()
             );
         // printf("\t\tRound %d: nodeSize: %d\n", round, d->nodeSize->Value());
 #ifdef KERNEL_LOG
-        cudaDeviceSynchronize();
+        hipDeviceSynchronize();
 #endif
 
         dprintf("\t\tRound %d: kHeapInsert\n", round);
@@ -305,7 +305,7 @@ bool GPULeggedRobotSolver::solve()
                 *d->optimalNodesSize
             );
 #ifdef KERNEL_LOG
-        cudaDeviceSynchronize();
+        hipDeviceSynchronize();
 #endif
         dprintf("\t\tRound %d: Finished\n\n", round);
     }

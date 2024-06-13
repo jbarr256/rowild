@@ -88,10 +88,9 @@ int main(int argc, const char **argv) {
 
     auto classLabels = readInputLabels(inputLabelsFile);
     auto model = cv::dnn::readNet(inputModelFile, inputCfgFile, "TensorFlow");
+
     cv::Mat image = cv::imread(inputImgFile);
-    cv::Mat blob =
-        cv::dnn::blobFromImage(image, imgScale, cv::Size(300, 300),
-                               cv::Scalar(127.5, 127.5, 127.5), true, false);
+    cv::Mat blob = cv::dnn::blobFromImage(image, imgScale, cv::Size(300, 300), cv::Scalar(127.5, 127.5, 127.5), true, false);
 
     model.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
     model.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
@@ -102,8 +101,7 @@ int main(int argc, const char **argv) {
 
     // ROI begins
     cv::Mat output = model.forward();
-    cv::Mat detectionMat(output.size[2], output.size[3], CV_32F,
-                         output.ptr<float>());
+    cv::Mat detectionMat(output.size[2], output.size[3], CV_32F,output.ptr<float>());
     // ROI ends
 
     std::cout << "Inference time: " << t.elapsed() << std::endl;
@@ -121,12 +119,8 @@ int main(int argc, const char **argv) {
                 detectionMat.at<float>(i, 5) * image.cols - box_x);
             int box_height = static_cast<int>(
                 detectionMat.at<float>(i, 6) * image.rows - box_y);
-            rectangle(image, cv::Point(box_x, box_y),
-                      cv::Point(box_x + box_width, box_y + box_height),
-                      cv::Scalar(255, 255, 255), 2);
-            putText(image, classLabels[classId - 1].c_str(),
-                    cv::Point(box_x, box_y - 5), cv::FONT_HERSHEY_SIMPLEX, 0.5,
-                    cv::Scalar(0, 255, 255), 1);
+            rectangle(image, cv::Point(box_x, box_y), cv::Point(box_x + box_width, box_y + box_height),cv::Scalar(255, 255, 255), 2);
+            putText(image, classLabels[classId - 1].c_str(), cv::Point(box_x, box_y - 5), cv::FONT_HERSHEY_SIMPLEX, 0.5,cv::Scalar(0, 255, 255), 1);
         }
 
         imwrite(outputImg, image);

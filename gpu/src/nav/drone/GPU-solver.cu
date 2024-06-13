@@ -94,8 +94,8 @@ GPUDroneSolver::~GPUDroneSolver()
 
 void GPUDroneSolver::initialize(double heuristicWeight)
 {
-    cudaDeviceSynchronize();
-    cudaDeviceReset();
+    hipDeviceSynchronize();
+    hipDeviceReset();
 
     d->context = CreateCudaDevice(0);
 
@@ -181,7 +181,7 @@ bool GPUDroneSolver::solve()
                 *d->heapInsertSize
             );
 #ifdef KERNEL_LOG
-        cudaDeviceSynchronize();
+        hipDeviceSynchronize();
 #endif
 
         dprintf("\t\tRound %d: Fetch optimalNodesSize: ", round);
@@ -240,7 +240,7 @@ bool GPUDroneSolver::solve()
                 *d->sortListSize2
             );
 #ifdef KERNEL_LOG
-        cudaDeviceSynchronize();
+        hipDeviceSynchronize();
 #endif
 
         dprintf("\t\tRound %d: Fetch sortListSize2: ", round);
@@ -268,7 +268,7 @@ bool GPUDroneSolver::solve()
             );
         // printf("\t\tRound %d: nodeSize: %d\n", round, d->nodeSize->Value());
 #ifdef KERNEL_LOG
-        cudaDeviceSynchronize();
+        hipDeviceSynchronize();
 #endif
 
         dprintf("\t\tRound %d: kHeapInsert\n", round);
@@ -289,7 +289,7 @@ bool GPUDroneSolver::solve()
                 *d->optimalNodesSize
             );
 #ifdef KERNEL_LOG
-        cudaDeviceSynchronize();
+        hipDeviceSynchronize();
 #endif
         dprintf("\t\tRound %d: Finished\n\n", round);
     }

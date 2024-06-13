@@ -30,8 +30,8 @@
 #include "rowild_utils.h"
 #include <random>
 #include <string>
-#include <thrust/device_vector.h>
-#include <thrust/host_vector.h>
+#include </opt/rocm/include/thrust/device_vector.h>
+#include </opt/rocm/include/thrust/host_vector.h>
 #include <vector>
 
 typedef thrust::device_vector<double> READING;

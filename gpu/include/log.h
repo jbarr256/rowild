@@ -30,7 +30,7 @@
 #include <sstream>
 #include <stdio.h>
 #include <stdlib.h>
-#include <cuda_runtime.h>
+#include </opt/rocm/include/hip/hip_runtime.h>
 
 #define PANIC_EXIT_CODE (112)
 
@@ -78,9 +78,9 @@ class PrintExpr {
         template<typename T> const PrintExpr operator =  (T t) const;  // will fail, can't assign in assertion
 };
 
-inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true) {
-   if (code != cudaSuccess) {
-      fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
+inline void gpuAssert(hipError_t code, const char *file, int line, bool abort=true) {
+   if (code != hipSuccess) {
+      fprintf(stderr,"GPUassert: %s %s %d\n", hipGetErrorString(code), file, line);
       if (abort) exit(code);
    }
 }

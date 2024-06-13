@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /*
  * MIT License
  *
@@ -28,7 +29,7 @@
 #include "rowild_utils.h"
 #include "transforms.h"
 #include <algorithm>
-#include <cuda_runtime.h>
+#include <hip/hip_runtime.h>
 #include <math.h>
 #include <string>
 
@@ -206,39 +207,39 @@ void Map::fuse(Frame *f, double **intrinsicMatrix, double **T) {
         bool *d_mergeBoard;
         int *d_mergedNodes;
 
-        cudaMalloc(&d_points, initialNodeCount * 3 * sizeof(double));
-        cudaMalloc(&d_normals, initialNodeCount * 3 * sizeof(double));
-        cudaMalloc(&d_colors, initialNodeCount * 3 * sizeof(double));
-        cudaMalloc(&d_weights, initialNodeCount * sizeof(double));
-        cudaMalloc(&d_vertexMap, h * w * 3 * sizeof(double));
-        cudaMalloc(&d_normalMap, h * w * 3 * sizeof(double));
-        cudaMalloc(&d_colorMap, h * w * 3 * sizeof(double));
-        cudaMalloc(&d_mergeBoard, h * w * sizeof(bool));
-        cudaMalloc(&d_invT, 4 * 4 * sizeof(double));
-        cudaMalloc(&d_T, 4 * 4 * sizeof(double));
-        cudaMalloc(&d_mergedNodes, sizeof(int));
+        hipMalloc(&d_points, initialNodeCount * 3 * sizeof(double));
+        hipMalloc(&d_normals, initialNodeCount * 3 * sizeof(double));
+        hipMalloc(&d_colors, initialNodeCount * 3 * sizeof(double));
+        hipMalloc(&d_weights, initialNodeCount * sizeof(double));
+        hipMalloc(&d_vertexMap, h * w * 3 * sizeof(double));
+        hipMalloc(&d_normalMap, h * w * 3 * sizeof(double));
+        hipMalloc(&d_colorMap, h * w * 3 * sizeof(double));
+        hipMalloc(&d_mergeBoard, h * w * sizeof(bool));
+        hipMalloc(&d_invT, 4 * 4 * sizeof(double));
+        hipMalloc(&d_T, 4 * 4 * sizeof(double));
+        hipMalloc(&d_mergedNodes, sizeof(int));
 
-        cudaMemcpy(d_points, points, initialNodeCount * 3 * sizeof(double),
-                   cudaMemcpyHostToDevice);
-        cudaMemcpy(d_normals, normals, initialNodeCount * 3 * sizeof(double),
-                   cudaMemcpyHostToDevice);
-        cudaMemcpy(d_colors, colors, initialNodeCount * 3 * sizeof(double),
-                   cudaMemcpyHostToDevice);
-        cudaMemcpy(d_weights, weights, initialNodeCount * sizeof(double),
-                   cudaMemcpyHostToDevice);
-        cudaMemcpy(d_vertexMap, vertexMap, h * w * 3 * sizeof(double),
-                   cudaMemcpyHostToDevice);
-        cudaMemcpy(d_normalMap, normalMap, h * w * 3 * sizeof(double),
-                   cudaMemcpyHostToDevice);
-        cudaMemcpy(d_colorMap, colorMap, h * w * 3 * sizeof(double),
-                   cudaMemcpyHostToDevice);
-        cudaMemcpy(d_mergeBoard, mergeBoard, h * w * sizeof(bool),
-                   cudaMemcpyHostToDevice);
-        cudaMemcpy(d_invT, invT, 4 * 4 * sizeof(double),
-                   cudaMemcpyHostToDevice);
-        cudaMemcpy(d_T, T, 4 * 4 * sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemcpy(d_mergedNodes, &mergedNodes, sizeof(int),
-                   cudaMemcpyHostToDevice);
+        hipMemcpy(d_points, points, initialNodeCount * 3 * sizeof(double),
+                   hipMemcpyHostToDevice);
+        hipMemcpy(d_normals, normals, initialNodeCount * 3 * sizeof(double),
+                   hipMemcpyHostToDevice);
+        hipMemcpy(d_colors, colors, initialNodeCount * 3 * sizeof(double),
+                   hipMemcpyHostToDevice);
+        hipMemcpy(d_weights, weights, initialNodeCount * sizeof(double),
+                   hipMemcpyHostToDevice);
+        hipMemcpy(d_vertexMap, vertexMap, h * w * 3 * sizeof(double),
+                   hipMemcpyHostToDevice);
+        hipMemcpy(d_normalMap, normalMap, h * w * 3 * sizeof(double),
+                   hipMemcpyHostToDevice);
+        hipMemcpy(d_colorMap, colorMap, h * w * 3 * sizeof(double),
+                   hipMemcpyHostToDevice);
+        hipMemcpy(d_mergeBoard, mergeBoard, h * w * sizeof(bool),
+                   hipMemcpyHostToDevice);
+        hipMemcpy(d_invT, invT, 4 * 4 * sizeof(double),
+                   hipMemcpyHostToDevice);
+        hipMemcpy(d_T, T, 4 * 4 * sizeof(double), hipMemcpyHostToDevice);
+        hipMemcpy(d_mergedNodes, &mergedNodes, sizeof(int),
+                   hipMemcpyHostToDevice);
 
         int numBlocks = (initialNodeCount + 256 - 1) / 256;
 
@@ -247,31 +248,31 @@ void Map::fuse(Frame *f, double **intrinsicMatrix, double **T) {
             d_colorMap, d_mergeBoard, d_invT, d_T, initialNodeCount, fx, fy, cx,
             cy, h, w, this->distDiff, this->angleDiff, d_mergedNodes);
 
-        cudaMemcpy(this->points, d_points,
+        hipMemcpy(this->points, d_points,
                    initialNodeCount * 3 * sizeof(double),
-                   cudaMemcpyDeviceToHost);
-        cudaMemcpy(this->normals, d_normals,
+                   hipMemcpyDeviceToHost);
+        hipMemcpy(this->normals, d_normals,
                    initialNodeCount * 3 * sizeof(double),
-                   cudaMemcpyDeviceToHost);
-        cudaMemcpy(this->colors, d_colors,
+                   hipMemcpyDeviceToHost);
+        hipMemcpy(this->colors, d_colors,
                    initialNodeCount * 3 * sizeof(double),
-                   cudaMemcpyDeviceToHost);
-        cudaMemcpy(this->weights, d_weights, initialNodeCount * sizeof(double),
-                   cudaMemcpyDeviceToHost);
-        cudaMemcpy(&mergedNodes, d_mergedNodes, sizeof(int),
-                   cudaMemcpyDeviceToHost);
+                   hipMemcpyDeviceToHost);
+        hipMemcpy(this->weights, d_weights, initialNodeCount * sizeof(double),
+                   hipMemcpyDeviceToHost);
+        hipMemcpy(&mergedNodes, d_mergedNodes, sizeof(int),
+                   hipMemcpyDeviceToHost);
 
-        cudaFree(d_points);
-        cudaFree(d_normals);
-        cudaFree(d_colors);
-        cudaFree(d_weights);
-        cudaFree(d_vertexMap);
-        cudaFree(d_normalMap);
-        cudaFree(d_colorMap);
-        cudaFree(d_mergeBoard);
-        cudaFree(d_invT);
-        cudaFree(d_T);
-        cudaFree(d_mergedNodes);
+        hipFree(d_points);
+        hipFree(d_normals);
+        hipFree(d_colors);
+        hipFree(d_weights);
+        hipFree(d_vertexMap);
+        hipFree(d_normalMap);
+        hipFree(d_colorMap);
+        hipFree(d_mergeBoard);
+        hipFree(d_invT);
+        hipFree(d_T);
+        hipFree(d_mergedNodes);
 
         this->add(h * w - mergedNodes, nPoints, nNormals, nColors, T,
                   mergeBoard, h, w);

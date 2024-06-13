@@ -30,9 +30,16 @@
 #include <string>
 #include <thrust/for_each.h>
 #include <thrust/gather.h>
-#include <thrust/iterator/zip_iterator.h>
+
+#include <thrust/iterator/constant_iterator.h>
+#include <thrust/transform.h>
+#include </opt/rocm/include/thrust/transform_reduce.h>
+
+
 #include <thrust/zip_function.h>
 #include <vector>
+
+#include <rocprim/rocprim.hpp>
 
 ParticleFilter::ParticleFilter(std::string inputMapFile, int _numParticles,
                                int _subsample) {
@@ -234,8 +241,8 @@ void ParticleFilter::updateMotion(const READING &prevOdometry,
 
     // ThetaPrime <- Theta + dRh1
     thrust::device_vector<float> thetaPrime(numParticles);
-    thrust::transform(this->particlesTheta.begin(), this->particlesTheta.end(),
-                      thrust::constant_iterator<double>(dRh1),
+    transform(this->particlesTheta.begin(), this->particlesTheta.end(),
+                      rocprim::constant_iterator<double>(dRh1),
                       thetaPrime.begin(), thrust::plus<double>());
 
     // X <- X + dTh * cos(thetaPrime)
@@ -263,10 +270,10 @@ void ParticleFilter::updateSensor(const READING &laserReading) {
 
     thrust::for_each(
         thrust::make_zip_iterator(thrust::make_tuple(
-            thrust::counting_iterator<int>(0), probs.begin())),
+            rocprim::counting_iterator<int>(0), probs.begin())),
 
         thrust::make_zip_iterator(thrust::make_tuple(
-            thrust::counting_iterator<int>(0), probs.begin())) +
+            rocprim::counting_iterator<int>(0), probs.begin())) +
             probs.size(),
 
         thrust::make_zip_function(calcProbabilityFunctor(
@@ -278,10 +285,10 @@ void ParticleFilter::updateSensor(const READING &laserReading) {
     // Reduce
     thrust::device_vector<int> probIndices(numParticles);
     thrust::reduce_by_key(
-        thrust::make_transform_iterator(thrust::counting_iterator<int>(0),
+        thrust::make_transform_iterator(rocprim::counting_iterator<int>(0),
                                         linearIdxToRowIdx<int>(numRays)),
 
-        thrust::make_transform_iterator(thrust::counting_iterator<int>(0),
+        thrust::make_transform_iterator(rocprim::counting_iterator<int>(0),
                                         linearIdxToRowIdx<int>(numRays)) +
             (numParticles * numRays),
 
@@ -313,7 +320,7 @@ void ParticleFilter::resample() {
                        thrust::plus<double>());
 
     thrust::transform(this->particlesW.begin(), this->particlesW.end(),
-                      thrust::constant_iterator<double>(wSum),
+                      rocprim::constant_iterator<double>(wSum),
                       this->particlesW.begin(), thrust::divides<double>());
 
     thrust::host_vector<double> weights = this->particlesW;

@@ -1,3 +1,4 @@
+#include "/opt/rocm/include/hip/hip_runtime.h"
 /*
  * MIT License
  *
@@ -28,7 +29,7 @@
 #include "log.h"
 #include "rowild_utils.h"
 #include "timer.h"
-#include <cuda_runtime.h>
+#include </opt/rocm/include/hip/hip_runtime.h>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -107,16 +108,16 @@ int main(int argc, const char **argv) {
     float hInitialState[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
     float *dInitialState;
 
-    cudaMalloc((void **)&dInitialState, 6 * sizeof(float));
-    cudaMemcpy(dInitialState, hInitialState, 6 * sizeof(float),
-               cudaMemcpyHostToDevice);
+    hipMalloc((void **)&dInitialState, 6 * sizeof(float));
+    hipMemcpy(dInitialState, hInitialState, 6 * sizeof(float),
+               hipMemcpyHostToDevice);
 
     // Assume we're testing 1024 different initial control sequences
     float hControls[1024 * 3];
     float *dControls;
-    cudaMalloc((void **)&dControls, 1024 * 3 * sizeof(float));
-    cudaMemcpy(dControls, hControls, 1024 * 3 * sizeof(float),
-               cudaMemcpyHostToDevice);
+    hipMalloc((void **)&dControls, 1024 * 3 * sizeof(float));
+    hipMemcpy(dControls, hControls, 1024 * 3 * sizeof(float),
+               hipMemcpyHostToDevice);
 
     timer t;
 
@@ -126,11 +127,11 @@ int main(int argc, const char **argv) {
 
     std::cout << "Execution time: " << t.elapsed() << std::endl;
 
-    cudaMemcpy(hControls, dControls, 1024 * 3 * sizeof(float),
-               cudaMemcpyDeviceToHost);
+    hipMemcpy(hControls, dControls, 1024 * 3 * sizeof(float),
+               hipMemcpyDeviceToHost);
 
-    cudaFree(dControls);
-    cudaFree(dInitialState);
+    hipFree(dControls);
+    hipFree(dInitialState);
 
     // Write the output log
     std::ofstream outLogFile;

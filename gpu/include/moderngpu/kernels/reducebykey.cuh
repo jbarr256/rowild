@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /******************************************************************************
  * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  * 
@@ -208,10 +209,10 @@ MGPU_HOST void ReduceByKeyPreprocess(int count, KeysIt keys_global,
 			context.Stream());
 	if(count_host) {
 		if(AsyncTransfer) {
-			cudaError_t error = cudaMemcpyAsync(context.PageLocked(), 
+			hipError_t error = hipMemcpyAsync(context.PageLocked(), 
 				data->limitsDevice->get() + numBlocks, sizeof(int),
-				cudaMemcpyDeviceToHost, context.Stream());
-			error = cudaEventRecord(context.Event(), context.Stream());
+				hipMemcpyDeviceToHost, context.Stream());
+			error = hipEventRecord(context.Event(), context.Stream());
 		} else
 			copyDtoH(count_host, data->limitsDevice->get() + numBlocks, 1);
 	}
@@ -227,7 +228,7 @@ MGPU_HOST void ReduceByKeyPreprocess(int count, KeysIt keys_global,
 
 	// Retrieve the number of rows.
 	if(AsyncTransfer && count_host) {
-		cudaError_t error = cudaEventSynchronize(context.Event());
+		hipError_t error = hipEventSynchronize(context.Event());
 		*count_host = *context.PageLocked();
 	}
 	data->numSegments = count_host ? *count_host : -1;
@@ -256,10 +257,10 @@ MGPU_HOST void ReduceByKey(KeysIt keys_global, InputIt data_global, int count,
 	const bool AsyncTransfer = true;
 	if(count_host) {
 		if(AsyncTransfer) {
-			cudaError_t error = cudaMemcpyAsync(context.PageLocked(), 
-				count_global, sizeof(int), cudaMemcpyDeviceToHost, 
+			hipError_t error = hipMemcpyAsync(context.PageLocked(), 
+				count_global, sizeof(int), hipMemcpyDeviceToHost, 
 				context.Stream());
-			error = cudaEventRecord(context.Event(), context.Stream());
+			error = hipEventRecord(context.Event(), context.Stream());
 		} else
 			copyDtoH(count_host, count_global, 1);
 	}
@@ -269,7 +270,7 @@ MGPU_HOST void ReduceByKey(KeysIt keys_global, InputIt data_global, int count,
 
 	// Retrieve the number of segments.
 	if(AsyncTransfer && count_host) {
-		cudaError_t error = cudaEventSynchronize(context.Event());
+		hipError_t error = hipEventSynchronize(context.Event());
 		*count_host = *context.PageLocked();
 	}
 }

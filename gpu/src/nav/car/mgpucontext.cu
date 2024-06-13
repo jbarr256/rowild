@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /******************************************************************************
  * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -40,14 +41,14 @@ namespace mgpu {
 // CudaTimer
 
 void CudaTimer::Start() {
-	cudaEventRecord(start);
-	cudaDeviceSynchronize();
+	hipEventRecord(start);
+	hipDeviceSynchronize();
 }
 double CudaTimer::Split() {
-	cudaEventRecord(end);
-	cudaDeviceSynchronize();
+	hipEventRecord(end);
+	hipDeviceSynchronize();
 	float t;
-	cudaEventElapsedTime(&t, start, end);
+	hipEventElapsedTime(&t, start, end);
 	start.Swap(end);
 	return (t / 1000.0);
 }
@@ -72,8 +73,8 @@ struct DeviceGroup {
 
 	int GetDeviceCount() {
 		if(-1 == numCudaDevices) {
-			cudaError_t error = cudaGetDeviceCount(&numCudaDevices);
-			if(cudaSuccess != error || numCudaDevices <= 0) {
+			hipError_t error = hipGetDeviceCount(&numCudaDevices);
+			if(hipSuccess != error || numCudaDevices <= 0) {
 				fprintf(stderr, "ERROR ENUMERATING CUDA DEVICES.\nExiting.\n");
 				exit(0);
 			}
@@ -90,18 +91,18 @@ struct DeviceGroup {
 			// Retrieve the device properties.
 			CudaDevice* device = cudaDevices[ordinal] = new CudaDevice;
 			device->_ordinal = ordinal;
-			cudaError_t error = cudaGetDeviceProperties(&device->_prop, 
+			hipError_t error = hipGetDeviceProperties(&device->_prop, 
 				ordinal);
-			if(cudaSuccess != error) {
+			if(hipSuccess != error) {
 				fprintf(stderr, "FAILURE TO CREATE CUDA DEVICE %d\n", ordinal);
 				exit(0);
 			}
 
 			// Get the compiler version for this device.
-			cudaSetDevice(ordinal);
-			cudaFuncAttributes attr;
-			error = cudaFuncGetAttributes(&attr, KernelVersionShim);	
-			if(cudaSuccess == error) 
+			hipSetDevice(ordinal);
+			hipFuncAttributes attr;
+			error = hipFuncGetAttributes(&attr, KernelVersionShim);	
+			if(hipSuccess == error) 
 				device->_ptxVersion = 10 * attr.ptxVersion;
 			else {
 				printf("NOT COMPILED WITH COMPATIBLE PTX VERSION FOR DEVICE"
@@ -119,7 +120,7 @@ struct DeviceGroup {
 				delete cudaDevices[i];
 			delete [] cudaDevices;
 		}
-		// cudaDeviceReset();
+		// hipDeviceReset();
                 // Make cuda-memcheck clean
 	}
 };
@@ -143,8 +144,8 @@ CudaDevice& CudaDevice::ByOrdinal(int ordinal) {
 
 CudaDevice& CudaDevice::Selected() {
 	int ordinal;
-	cudaError_t error = cudaGetDevice(&ordinal);
-	if(cudaSuccess != error) {
+	hipError_t error = hipGetDevice(&ordinal);
+	if(hipSuccess != error) {
 		fprintf(stderr, "ERROR RETRIEVING CUDA DEVICE ORDINAL\n");
 		exit(0);
 	}
@@ -152,8 +153,8 @@ CudaDevice& CudaDevice::Selected() {
 }
 
 void CudaDevice::SetActive() {
-	cudaError_t error = cudaSetDevice(_ordinal); 
-	if(cudaSuccess != error) {
+	hipError_t error = hipSetDevice(_ordinal); 
+	if(hipSuccess != error) {
 		fprintf(stderr, "ERROR SETTING CUDA DEVICE TO ORDINAL %d\n", _ordinal);
 		exit(0);
 	}
@@ -161,8 +162,8 @@ void CudaDevice::SetActive() {
 
 std::string CudaDevice::DeviceString() const {
 	size_t freeMem, totalMem;
-	cudaError_t error = cudaMemGetInfo(&freeMem, &totalMem);
-	if(cudaSuccess != error) {
+	hipError_t error = hipMemGetInfo(&freeMem, &totalMem);
+	if(hipSuccess != error) {
 		fprintf(stderr, "ERROR RETRIEVING MEM INFO FOR CUDA DEVICE %d\n",
 			_ordinal);
 		exit(0);
@@ -217,7 +218,7 @@ struct ContextGroup {
 std::auto_ptr<ContextGroup> contextGroup;
 
 CudaContext::CudaContext(CudaDevice& device, bool newStream, bool standard) :
-	_event(cudaEventDisableTiming /*| cudaEventBlockingSync */), 
+	_event(hipEventDisableTiming /*| hipEventBlockingSync */), 
 	_stream(0), _noRefCount(standard), _pageLocked(0) {
 
 	// Create an allocator.
@@ -226,31 +227,31 @@ CudaContext::CudaContext(CudaDevice& device, bool newStream, bool standard) :
 	else
 		_alloc = CreateDefaultAlloc(device);
 	
-	if(newStream) cudaStreamCreate(&_stream);
+	if(newStream) hipStreamCreate(&_stream);
 	_ownStream = newStream;
 
 	// Allocate 4KB of page-locked memory.
-	cudaMallocHost((void**)&_pageLocked, 4096);
+	hipHostMalloc((void**)&_pageLocked, 4096);
 
 	// Allocate an auxiliary stream.
-	cudaStreamCreate(&_auxStream);
+	hipStreamCreate(&_auxStream);
 }
 
 CudaContext::~CudaContext() {
 	if(_pageLocked)
-		cudaFreeHost(_pageLocked);
+		hipHostFree(_pageLocked);
 	if(_ownStream && _stream)
-		cudaStreamDestroy(_stream);
+		hipStreamDestroy(_stream);
 	if(_auxStream)
-		cudaStreamDestroy(_auxStream);
+		hipStreamDestroy(_auxStream);
 }
 
 AllocPtr CudaContext::CreateDefaultAlloc(CudaDevice& device) {
 	intrusive_ptr<CudaAllocBuckets> alloc(new CudaAllocBuckets(device));
 	size_t freeMem, totalMem;
 
-	cudaError_t error = cudaMemGetInfo(&freeMem, &totalMem);
-	if(cudaSuccess != error) {
+	hipError_t error = hipMemGetInfo(&freeMem, &totalMem);
+	if(hipSuccess != error) {
 		fprintf(stderr, "ERROR RETRIEVING MEM INFO FOR CUDA DEVICE %d\n",
 			device.Ordinal());
 		exit(0);
@@ -265,8 +266,8 @@ AllocPtr CudaContext::CreateDefaultAlloc(CudaDevice& device) {
 CudaContext& CudaContext::StandardContext(int ordinal) {
 	bool setActive = -1 != ordinal;
 	if(-1 == ordinal) {
-		cudaError_t error = cudaGetDevice(&ordinal);
-		if(cudaSuccess != error) {
+		hipError_t error = hipGetDevice(&ordinal);
+		if(hipSuccess != error) {
 			fprintf(stderr, "ERROR RETRIEVING CUDA DEVICE ORDINAL\n");
 			exit(0);
 		}
@@ -342,28 +343,28 @@ ContextPtr CreateCudaDeviceStream(int argc, char** argv, bool printInfo) {
 	return context;
 }
 
-ContextPtr CreateCudaDeviceAttachStream(int ordinal, cudaStream_t stream) {
+ContextPtr CreateCudaDeviceAttachStream(int ordinal, hipStream_t stream) {
 	ContextPtr context(new CudaContext(
 		CudaDevice::ByOrdinal(ordinal), false, false));
 	context->_stream = stream;
 	return context;
 }
 
-ContextPtr CreateCudaDeviceAttachStream(cudaStream_t stream) {
+ContextPtr CreateCudaDeviceAttachStream(hipStream_t stream) {
 	int ordinal;
-	cudaGetDevice(&ordinal);
+	hipGetDevice(&ordinal);
 	return CreateCudaDeviceAttachStream(ordinal, stream);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // CudaAllocSimple
 
-cudaError_t CudaAllocSimple::Malloc(size_t size, void** p) {
-	cudaError_t error = cudaSuccess;
+hipError_t CudaAllocSimple::Malloc(size_t size, void** p) {
+	hipError_t error = hipSuccess;
 	*p = 0;
-	if(size) error = cudaMalloc(p, size);
+	if(size) error = hipMalloc(p, size);
 
-	if(cudaSuccess != error) {
+	if(hipSuccess != error) {
 		printf("CUDA MALLOC ERROR %d\n", error);
 		exit(0);
 	}
@@ -372,9 +373,9 @@ cudaError_t CudaAllocSimple::Malloc(size_t size, void** p) {
 }
 
 bool CudaAllocSimple::Free(void* p) {
-	cudaError_t error = cudaSuccess;
-	if(p) error = cudaFree(p);
-	return cudaSuccess == error;
+	hipError_t error = hipSuccess;
+	if(p) error = hipFree(p);
+	return hipSuccess == error;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -407,7 +408,7 @@ bool CudaAllocBuckets::SanityCheck() const {
 	return allocatedCount == _allocated && committedCount == _committed;
 }
 
-cudaError_t CudaAllocBuckets::Malloc(size_t size, void** p) {
+hipError_t CudaAllocBuckets::Malloc(size_t size, void** p) {
 
 	// Locate the bucket index and adjust the size of the allocation to the 
 	// bucket size.
@@ -429,20 +430,20 @@ cudaError_t CudaAllocBuckets::Malloc(size_t size, void** p) {
 		_committed += commitSize;
 
 		*p = memIt->address->first;
-		return cudaSuccess;
+		return hipSuccess;
 	}
 
 	// Shrink if this allocation would put us over the limit.
 	Compact(commitSize);
 
-	cudaError_t error = cudaSuccess;
+	hipError_t error = hipSuccess;
 	*p = 0;
-	if(size) error = cudaMalloc(p, allocSize);
-	while((cudaErrorMemoryAllocation == error) && (_committed < _allocated)) {
+	if(size) error = hipMalloc(p, allocSize);
+	while((hipErrorOutOfMemory == error) && (_committed < _allocated)) {
 		SetCapacity(_capacity - _capacity / 10, _maxObjectSize);
-		error = cudaMalloc(p, size);
+		error = hipMalloc(p, size);
 	}
-	if(cudaSuccess != error) return error;
+	if(hipSuccess != error) return error;
 
 	MemList::iterator memIt = 
 		_memLists[bucket].insert(_memLists[bucket].end(), MemNode());
@@ -454,15 +455,15 @@ cudaError_t CudaAllocBuckets::Malloc(size_t size, void** p) {
 
 	assert(SanityCheck());
 
-	return cudaSuccess;
+	return hipSuccess;
 }
 
 bool CudaAllocBuckets::Free(void* p) {
 	AddressMap::iterator it = _addressMap.find(p);
 	if(it == _addressMap.end()) {
-		// If the pointer was not found in the address map, cudaFree it anyways
+		// If the pointer was not found in the address map, hipFree it anyways
 		// but return false.
-		if(p) cudaFree(p);
+		if(p) hipFree(p);
 		return false;
 	}
 
@@ -496,7 +497,7 @@ void CudaAllocBuckets::Clear() {
 }
 
 void CudaAllocBuckets::FreeNode(CudaAllocBuckets::MemList::iterator memIt) {
-	if(memIt->address->first) cudaFree(memIt->address->first);
+	if(memIt->address->first) hipFree(memIt->address->first);
 
 	int bucket = memIt->bucket;
 	size_t commitSize = (bucket < NumBuckets) ? BucketSizes[bucket] : 0;

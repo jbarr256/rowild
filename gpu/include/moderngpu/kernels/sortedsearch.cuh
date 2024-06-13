@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /******************************************************************************
  * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  * 
@@ -198,7 +199,7 @@ MGPU_HOST void SortedSearch(InputIt1 a_global, int aCount, InputIt2 b_global,
 	int* aMatchDevice = 0, *bMatchDevice = 0;
 	if(aMatchCount || bMatchCount) {
 		counters = context.Malloc<int>(2);
-		cudaMemsetAsync(counters->get(), 0, 2 * sizeof(int), context.Stream());
+		hipMemsetAsync(counters->get(), 0, 2 * sizeof(int), context.Stream());
 		aMatchDevice = counters->get();
 		bMatchDevice = aMatchDevice + 1;
 	}
@@ -213,8 +214,8 @@ MGPU_HOST void SortedSearch(InputIt1 a_global, int aCount, InputIt2 b_global,
 	// Copy counters back to host memory.
 	if((MatchA && aMatchCount) || (MatchB && bMatchCount)) {
 		int2 host;
-		cudaMemcpy(&host, counters->get(), sizeof(int2), 
-			cudaMemcpyDeviceToHost);
+		hipMemcpy(&host, counters->get(), sizeof(int2), 
+			hipMemcpyDeviceToHost);
 		if(aMatchCount) *aMatchCount = host.x;
 		if(bMatchCount) *bMatchCount = host.y;
 	}

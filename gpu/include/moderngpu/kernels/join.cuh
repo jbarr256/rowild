@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /******************************************************************************
  * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  * 
@@ -281,7 +282,7 @@ MGPU_HOST int RelationalJoin(InputIt1 a_global, int aCount, InputIt2 b_global,
 			bIndicesDevice->get() + leftJoinTotal);
 		MGPU_SYNC_CHECK("KernelRightJoinDownsweep");
 
-		cudaMemset(aIndicesDevice->get() + leftJoinTotal, -1, 
+		hipMemset(aIndicesDevice->get() + leftJoinTotal, -1, 
 			sizeof(int) * rightJoinTotal);
 	}
 

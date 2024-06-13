@@ -310,7 +310,7 @@ MGPU_HOST void LocalitySortPairs(KeyType* keys_global, ValType* values_global,
 //			significant bit is match bit.
 //	aMatchCount, bMatchCount - If Type is Match or IndexMatch, return the total 
 //		number of elements in A or B with matches in B or A, if the pointer is
-//		not null. This generates a synchronous cudaMemcpyDeviceToHost call that
+//		not null. This generates a synchronous hipMemcpyDeviceToHost call that
 //		callers using streams should be aware of.
 template<MgpuBounds Bounds, MgpuSearchType TypeA, MgpuSearchType TypeB,
 	typename InputIt1, typename InputIt2, typename OutputIt1, 
@@ -499,7 +499,7 @@ MGPU_HOST void IntervalScatter(int moveCount, ScatterIt scatter_global,
 // by the join function using the allocator associated with the context. It 
 // returns the number of outputs.
 
-// RelationalJoin performs one cudaMemcpyDeviceToHost to retrieve the size of
+// RelationalJoin performs one hipMemcpyDeviceToHost to retrieve the size of
 // the output array. This is a synchronous operation and may prevent queueing
 // for callers using streams.
 template<MgpuJoinKind Kind, typename InputIt1, typename InputIt2,
@@ -532,7 +532,7 @@ MGPU_HOST int RelationalJoin(InputIt1 a_global, int aCount, InputIt2 b_global,
 // by the multiset function using the allocator associated with the context. It 
 // returns the number of outputs.
 
-// SetOpKeys performs one cudaMemcpyDeviceToHost to retrieve the size of
+// SetOpKeys performs one hipMemcpyDeviceToHost to retrieve the size of
 // the output array. This is a synchronous operation and may prevent queueing
 // for callers using streams.
 

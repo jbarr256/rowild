@@ -94,8 +94,8 @@ GPUCarRobotSolver::~GPUCarRobotSolver()
 
 void GPUCarRobotSolver::initialize(double heuristicWeight)
 {
-    cudaDeviceSynchronize();
-    cudaDeviceReset();
+    hipDeviceSynchronize();
+    hipDeviceReset();
 
     d->context = CreateCudaDevice(0);
 
@@ -182,7 +182,7 @@ bool GPUCarRobotSolver::solve()
                 *d->heapInsertSize
             );
 #ifdef KERNEL_LOG
-        cudaDeviceSynchronize();
+        hipDeviceSynchronize();
 #endif
 
         dprintf("\t\tRound %d: Fetch optimalNodesSize: ", round);
@@ -241,7 +241,7 @@ bool GPUCarRobotSolver::solve()
                 *d->sortListSize2
             );
 #ifdef KERNEL_LOG
-        cudaDeviceSynchronize();
+        hipDeviceSynchronize();
 #endif
 
         dprintf("\t\tRound %d: Fetch sortListSize2: ", round);
@@ -269,7 +269,7 @@ bool GPUCarRobotSolver::solve()
             );
         // printf("\t\tRound %d: nodeSize: %d\n", round, d->nodeSize->Value());
 #ifdef KERNEL_LOG
-        cudaDeviceSynchronize();
+        hipDeviceSynchronize();
 #endif
 
         dprintf("\t\tRound %d: kHeapInsert\n", round);
@@ -290,7 +290,7 @@ bool GPUCarRobotSolver::solve()
                 *d->optimalNodesSize
             );
 #ifdef KERNEL_LOG
-        cudaDeviceSynchronize();
+        hipDeviceSynchronize();
 #endif
         dprintf("\t\tRound %d: Finished\n\n", round);
     }

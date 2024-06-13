@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /*
  * MIT License
  *
@@ -25,9 +26,9 @@
  */
 
 #include <algorithm>
-#include <cublas_v2.h>
-#include <cuda_runtime.h>
-#include <cusolverDn.h>
+#include <hipblas/hipblas.h>
+#include <hip/hip_runtime.h>
+#include <hipsolver/hipsolver.h>
 #include <iostream>
 #include <math.h>
 #include <vector>
@@ -156,10 +157,10 @@ double **icp(Map *m, Frame *f, double **intrinsic, double **T) {
     double cx = intrinsic[0][2];
     double cy = intrinsic[1][2];
 
-    cusolverDnHandle_t cusolverH;
-    cublasHandle_t cublasH;
-    cusolverDnCreate(&cusolverH);
-    cublasCreate(&cublasH);
+    hipsolverHandle_t cusolverH;
+    hipblasHandle_t cublasH;
+    hipsolverDnCreate(&cusolverH);
+    hipblasCreate(&cublasH);
 
     int *d_iuv, *d_newNumPoints;
     double *d_points, *d_vertexMap, *d_normalMap, *d_T;
@@ -169,34 +170,34 @@ double **icp(Map *m, Frame *f, double **intrinsic, double **T) {
 
     constexpr int vars = 3 + 3;
     int numPoints = m->getNumPoints();
-    cudaMalloc(&d_iuv, numPoints * 3 * sizeof(int));
-    cudaMalloc(&d_newNumPoints, sizeof(int));
-    cudaMalloc(&d_points, numPoints * 3 * sizeof(double));
-    cudaMalloc(&d_vertexMap, h * w * 3 * sizeof(double));
-    cudaMalloc(&d_normalMap, h * w * 3 * sizeof(double));
-    cudaMalloc(&d_T, 16 * sizeof(double));
-    cudaMalloc(&d_A, numPoints * vars * sizeof(double));
-    cudaMalloc(&d_b, numPoints * sizeof(double));
-    cudaMalloc(&d_delta, vars * sizeof(double));
+    hipMalloc(&d_iuv, numPoints * 3 * sizeof(int));
+    hipMalloc(&d_newNumPoints, sizeof(int));
+    hipMalloc(&d_points, numPoints * 3 * sizeof(double));
+    hipMalloc(&d_vertexMap, h * w * 3 * sizeof(double));
+    hipMalloc(&d_normalMap, h * w * 3 * sizeof(double));
+    hipMalloc(&d_T, 16 * sizeof(double));
+    hipMalloc(&d_A, numPoints * vars * sizeof(double));
+    hipMalloc(&d_b, numPoints * sizeof(double));
+    hipMalloc(&d_delta, vars * sizeof(double));
 
-    cudaMalloc((void **)&d_tau, sizeof(double) * vars);
-    cudaMalloc((void **)&d_work, sizeof(double) * lwork);
-    cudaMalloc((void **)&devInfo, sizeof(int));
+    hipMalloc((void **)&d_tau, sizeof(double) * vars);
+    hipMalloc((void **)&d_work, sizeof(double) * lwork);
+    hipMalloc((void **)&devInfo, sizeof(int));
 
-    cusolverDnDgeqrf_bufferSize(cusolverH, numPoints, vars, d_A, numPoints,
+    hipsolverDnDgeqrf_bufferSize(cusolverH, numPoints, vars, d_A, numPoints,
                                 &lwork);
 
     constexpr int threadsPerBlock = 256;
 
     for (int iter = 0; iter < 10; iter++) {
-        cudaMemcpy(d_points, m->getPoints(), numPoints * 3 * sizeof(double),
-                   cudaMemcpyHostToDevice);
-        cudaMemcpy(d_vertexMap, f->getVertexMap(), h * w * 3 * sizeof(double),
-                   cudaMemcpyHostToDevice);
-        cudaMemcpy(d_normalMap, f->getNormalMap(), h * w * 3 * sizeof(double),
-                   cudaMemcpyHostToDevice);
-        cudaMemcpy(d_T, T, 16 * sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemset(d_newNumPoints, 0, sizeof(int));
+        hipMemcpy(d_points, m->getPoints(), numPoints * 3 * sizeof(double),
+                   hipMemcpyHostToDevice);
+        hipMemcpy(d_vertexMap, f->getVertexMap(), h * w * 3 * sizeof(double),
+                   hipMemcpyHostToDevice);
+        hipMemcpy(d_normalMap, f->getNormalMap(), h * w * 3 * sizeof(double),
+                   hipMemcpyHostToDevice);
+        hipMemcpy(d_T, T, 16 * sizeof(double), hipMemcpyHostToDevice);
+        hipMemset(d_newNumPoints, 0, sizeof(int));
 
         int blocksPerGridTransform =
             (numPoints + threadsPerBlock - 1) / threadsPerBlock;
@@ -208,22 +209,22 @@ double **icp(Map *m, Frame *f, double **intrinsic, double **T) {
         // QR provides numerical stability over methods like normal
         // equations, ensuring accurate solutions in each ICP iteration,
         // which is vital for the convergence of the ICP algorithm.
-        cusolverDnDgeqrf(cusolverH, numPoints, vars, d_A, numPoints, d_tau,
+        hipsolverDnDgeqrf(cusolverH, numPoints, vars, d_A, numPoints, d_tau,
                          d_work, lwork, devInfo);
 
-        cudaMemcpy(d_delta, d_b, sizeof(double) * numPoints,
-                   cudaMemcpyDeviceToDevice);
-        cusolverDnDormqr(cusolverH, CUBLAS_SIDE_LEFT, CUBLAS_OP_T, numPoints, 1,
+        hipMemcpy(d_delta, d_b, sizeof(double) * numPoints,
+                   hipMemcpyDeviceToDevice);
+        hipsolverDnDormqr(cusolverH, HIPBLAS_SIDE_LEFT, HIPBLAS_OP_T, numPoints, 1,
                          vars, d_A, numPoints, d_tau, d_delta, numPoints,
                          d_work, lwork, devInfo);
         double one = 1;
-        cublasDtrsm(cublasH, CUBLAS_SIDE_LEFT, CUBLAS_FILL_MODE_UPPER,
-                    CUBLAS_OP_N, CUBLAS_DIAG_NON_UNIT, vars, 1, &one, d_A,
+        hipblasDtrsm(cublasH, HIPBLAS_SIDE_LEFT, HIPBLAS_FILL_MODE_UPPER,
+                    HIPBLAS_OP_N, HIPBLAS_DIAG_NON_UNIT, vars, 1, &one, d_A,
                     numPoints, d_delta, numPoints);
 
         double *delta = new double[vars];
-        cudaMemcpy(delta, d_delta, sizeof(double) * vars,
-                   cudaMemcpyDeviceToHost);
+        hipMemcpy(delta, d_delta, sizeof(double) * vars,
+                   hipMemcpyDeviceToHost);
 
         double **update = poseToTransformation(delta);
         double **oldT = new double *[4];
@@ -242,20 +243,20 @@ double **icp(Map *m, Frame *f, double **intrinsic, double **T) {
         delete[] delta;
     }
 
-    cudaFree(d_iuv);
-    cudaFree(d_newNumPoints);
-    cudaFree(d_points);
-    cudaFree(d_vertexMap);
-    cudaFree(d_normalMap);
-    cudaFree(d_T);
-    cudaFree(d_A);
-    cudaFree(d_b);
-    cudaFree(d_delta);
-    cudaFree(d_tau);
-    cudaFree(devInfo);
+    hipFree(d_iuv);
+    hipFree(d_newNumPoints);
+    hipFree(d_points);
+    hipFree(d_vertexMap);
+    hipFree(d_normalMap);
+    hipFree(d_T);
+    hipFree(d_A);
+    hipFree(d_b);
+    hipFree(d_delta);
+    hipFree(d_tau);
+    hipFree(devInfo);
 
-    cublasDestroy(cublasH);
-    cusolverDnDestroy(cusolverH);
+    hipblasDestroy(cublasH);
+    hipsolverDnDestroy(cusolverH);
 
     return T;
 }

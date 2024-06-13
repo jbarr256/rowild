@@ -208,7 +208,7 @@ MGPU_HOST_DEVICE int2 operator*(int2 a, int2 b) {
 	return make_int2(a.x * b.x, a.y * b.y);
 }
 MGPU_HOST_DEVICE int2& operator*=(int2& a, int2 b) {
-	a = a * b;
+	a = a*b;
 	return a;
 }
 

@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /*
  * This file is a part of uAstar (https://github.com/zhou13/uastar) with minor
  * modifications
@@ -6,9 +7,9 @@
 #ifndef __GPU_KERNEL_CUH_IUGANILK
 #define __GPU_KERNEL_CUH_IUGANILK
 
-#include <cuda.h>
-#include <cuda_runtime.h>
-#include <cuda_profiler_api.h>
+#include <hip/hip_runtime.h>
+#include <hip/hip_runtime.h>
+#include <hip/hip_runtime_api.h>
 
 #include <moderngpu.cuh>
 
@@ -127,7 +128,7 @@ inline __device__ float isInRange(int x, int y)
     return 0 <= x && x < d_mapX && 0 <= y && y < d_mapY;
 }
 
-inline cudaError_t initializeCUDAConstantMemory(
+inline hipError_t initializeCUDAConstantMemory(
     int mapX,
     int mapY,
     int targetX,
@@ -139,23 +140,23 @@ inline cudaError_t initializeCUDAConstantMemory(
     int robotWidth
 )
 {
-    cudaError_t ret = cudaSuccess;
-    ret = cudaMemcpyToSymbol(d_mapX, &mapX, sizeof(int));
-    ret = cudaMemcpyToSymbol(d_mapY, &mapY, sizeof(int));
-    ret = cudaMemcpyToSymbol(d_targetX, &targetX, sizeof(int));
-    ret = cudaMemcpyToSymbol(d_targetY, &targetY, sizeof(int));
-    ret = cudaMemcpyToSymbol(d_targetThetaIdx, &targetThetaIdx, sizeof(int));
-    ret = cudaMemcpyToSymbol(d_targetID, &targetID, sizeof(uint32_t));
-    ret = cudaMemcpyToSymbol(d_hweight, &heuristicWeight, sizeof(double));
-    ret = cudaMemcpyToSymbol(d_robotLength, &robotLength, sizeof(int));
-    ret = cudaMemcpyToSymbol(d_robotWidth, &robotWidth, sizeof(int));
+    hipError_t ret = hipSuccess;
+    ret = hipMemcpyToSymbol(HIP_SYMBOL(d_mapX), &mapX, sizeof(int));
+    ret = hipMemcpyToSymbol(HIP_SYMBOL(d_mapY), &mapY, sizeof(int));
+    ret = hipMemcpyToSymbol(HIP_SYMBOL(d_targetX), &targetX, sizeof(int));
+    ret = hipMemcpyToSymbol(HIP_SYMBOL(d_targetY), &targetY, sizeof(int));
+    ret = hipMemcpyToSymbol(HIP_SYMBOL(d_targetThetaIdx), &targetThetaIdx, sizeof(int));
+    ret = hipMemcpyToSymbol(HIP_SYMBOL(d_targetID), &targetID, sizeof(uint32_t));
+    ret = hipMemcpyToSymbol(HIP_SYMBOL(d_hweight), &heuristicWeight, sizeof(double));
+    ret = hipMemcpyToSymbol(HIP_SYMBOL(d_robotLength), &robotLength, sizeof(int));
+    ret = hipMemcpyToSymbol(HIP_SYMBOL(d_robotWidth), &robotWidth, sizeof(int));
     return ret;
 }
 
-inline cudaError_t updateModules(const vector<uint32_t> &mvec)
+inline hipError_t updateModules(const vector<uint32_t> &mvec)
 {
-    return cudaMemcpyToSymbol(
-        d_modules, mvec.data(), sizeof(uint32_t) * mvec.size());
+    return hipMemcpyToSymbol(HIP_SYMBOL(
+        d_modules), mvec.data(), sizeof(uint32_t) * mvec.size());
 }
 
 
